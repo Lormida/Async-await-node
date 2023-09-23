@@ -1,0 +1,27 @@
+//
+// Run me with --expose-gc
+//
+// node --expose-gc example.js
+//
+
+import { AsyncDebugger } from '../lib/async-debugger'
+
+console.log('Starting up!')
+
+function doTimeout() {
+  console.log('Starting timeout.')
+
+  setTimeout(() => {
+    setTimeout(() => {
+      console.log('Timeout finished.')
+    }, 2000)
+  }, 2000)
+}
+
+const asyncDebugger = new AsyncDebugger()
+asyncDebugger.notifyComplete(() => {
+  asyncDebugger.debug('test-1')
+})
+asyncDebugger.startTracking('test-1', doTimeout)
+
+console.log('End of script')

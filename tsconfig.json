@@ -1,0 +1,46 @@
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "target": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["DOM", "ESNext"],
+    "esModuleInterop": true,
+
+    "rootDir": ".",
+    "baseUrl": ".",
+    "outDir": "build",
+
+    "sourceMap": false,
+    "declaration": true,
+
+    "forceConsistentCasingInFileNames": true,
+    "importHelpers": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+
+    "alwaysStrict": true,
+    "skipLibCheck": true,
+    "strictBindCallApply": false,
+    "strictPropertyInitialization": false,
+    "strict": true,
+    "strictNullChecks": false,
+
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitAny": false,
+    "noImplicitThis": false,
+
+    "incremental": true,
+    "jsx": "preserve",
+    "allowJs": true,
+    "typeRoots": ["./node_modules/@types", "global.d.ts"]
+  },
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifierResolution": "node"
+  },
+  "include": ["src/**/*", "__tests__/**/*", "*.d.ts"],
+  "exclude": ["node_modules", "dist", "build"]
+}

@@ -1,0 +1,15 @@
+export const dummyApiUrls = [
+  'https://dummyjson.com/products/',
+  'https://dummyjson.com/carts/',
+  'https://dummyjson.com/users/',
+  'https://dummyjson.com/posts/',
+  'https://dummyjson.com/comments/',
+  'https://dummyjson.com/quotes/',
+  'https://dummyjson.com/todos/',
+  'https://jsonplaceholder.typicode.com/photos',
+  'https://jsonplaceholder.typicode.com/comments',
+  'https://jsonplaceholder.typicode.com/albums',
+  'https://jsonplaceholder.typicode.com/todos',
+  'https://jsonplaceholder.typicode.com/posts',
+  'https://cataas.com/api/cats?limit=1000&skip=0',
+]
