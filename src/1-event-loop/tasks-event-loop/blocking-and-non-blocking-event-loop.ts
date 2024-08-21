@@ -9,18 +9,47 @@ import url from 'url'
 import path from 'path'
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 
-const tempFile = path.join(__dirname, '../../../../temp/old.txt')
+const tempFile = path.join(__dirname, '../../../file.txt')
 
 /**
  * ? This technique is called as:
  * ! Synchronous code-splitting
  */
+
+export function non_blocking_sync_sometimes() {
+  /**
+   * ? Here we have the blocking of EL due to a lot of sync operations.
+   * -----
+   * ! Solution: forcefully plan setImmediate on current promise and "scroll forward" EL
+   * ? It unblocks EL sometimes.
+   * ? Unlike of `blocking_sync_after_io_always` it's possible unblock with only 1 setImmediate.
+   */
+
+  ;(async () => {
+    let result = 0
+
+    for (let i = 0; i < 250_000_000; i++) {
+      result += i
+
+      if (i == 100_000_000) {
+        await new Promise((resolve) => setImmediate(resolve))
+      }
+    }
+
+    console.log('Finished adding numbers', result)
+  })()
+
+  setTimeout(() => {
+    console.log('0 ms timeout - non-blocking-sync-sometimes')
+  }, 0)
+}
+
 export function non_blocking_sync_always() {
   /**
-   * ? Here we have the blocking of EL due to a lot of sync opearitions.
+   * ? Here we have the blocking of EL due to a lot of sync operitions.
    * -----
-   * ! Solution: forcefuly plan setImedidate on current promise and "scroll forward" EL
-   * ! It unblocks EL always (because we have a lot of setImmeidate calls)
+   * ! Solution: forcefully plan setImmediate twice on current promise and "scroll forward" EL
+   * ! It unblocks EL always (because we have 2 setImmediate calls => 100% scroll forward entire cycle)
    */
   ;(async () => {
     let result = 0
@@ -28,7 +57,8 @@ export function non_blocking_sync_always() {
     for (let i = 0; i < 250_000_000; i++) {
       result += i
 
-      if (i % 100_000_000 === 0) {
+      if (i === 100_000_000) {
+        await new Promise((resolve) => setImmediate(resolve))
         await new Promise((resolve) => setImmediate(resolve))
       }
     }
@@ -41,48 +71,18 @@ export function non_blocking_sync_always() {
   }, 0)
 }
 
-export function non_blocking_sync_sometimes() {
-  return new Promise((resolve) => {
-    /**
-     * ? Here we have the blocking of EL due to a lot of sync opearitions.
-     * -----
-     * ! Solution: forcefuly plan setImedidate on current promise and "scroll forward" EL
-     * ? It unblocks EL sometimes.
-     * ? Unlike of NonBlockingSyncAfterIO it's possibe unblock with only 1 setImmediate.
-     */
-
-    ;(async () => {
-      let result = 0
-
-      for (let i = 0; i < 250_000_000; i++) {
-        result += i
-
-        if (i == 2) {
-          await new Promise((resolve) => setImmediate(resolve))
-        }
-      }
-
-      return resolve('sync')
-      console.log('Finished adding numbers', result)
-    })()
-
-    setTimeout(() => {
-      return resolve('timeout')
-      console.log('0 ms timeout - non-blocking-sync-sometimes')
-    }, 0)
-  })
-}
-
-export function non_blocking_sync_after_io_never() {
+export function blocking_sync_after_io_always() {
   return new Promise((resolve, reject) => {
     fs.readFile(tempFile, async (err) => {
+      console.log('We have read a file')
+
       if (err) {
         reject(new Error(`error during read file: ${JSON.stringify(err)}`))
       }
       /**
-       * ? Here we have the blocking of EL due to a lot of sync opearitions.
+       * ? Here we have the blocking of EL due to a lot of sync operations.
        * -----
-       * ! Solution: forcefuly plan setImedidate on current promise and "scroll forward" EL
+       * ! Solution: forcefully plan setImmediate on current promise and "scroll forward" EL
        */
 
       /**
@@ -99,18 +99,18 @@ export function non_blocking_sync_after_io_never() {
         for (let i = 0; i < 250_000_000; i++) {
           result += i
 
-          if (i == 2) {
+          if (i == 100_000_000) {
             await new Promise((resolve) => setImmediate(resolve))
           }
         }
 
-        return resolve('sync')
         console.log('Finished adding numbers', result)
+        return resolve('sync')
       })()
 
       setTimeout(() => {
-        return resolve('timeout')
         console.log('we are inside timeout phase - 0 ms')
+        return resolve('timeout')
       }, 0)
     })
   })
@@ -119,13 +119,16 @@ export function non_blocking_sync_after_io_never() {
 export function non_blocking_sync_after_io_sometimes() {
   return new Promise((resolve, reject) => {
     fs.readFile(tempFile, async (err) => {
+      console.log('We have read a file')
+
       if (err) {
         reject(new Error(`error during read file: ${JSON.stringify(err)}`))
       }
+
       /**
-       * ? Here we have the blocking of EL due to a lot of sync opearitions.
+       * ? Here we have the blocking of EL due to a lot of sync operations.
        * -----
-       * ! Solution: forcefuly plan setImedidate on current promise and "scroll forward" EL
+       * ! Solution: forcefully plan setImmediate on current promise and "scroll forward" EL
        */
 
       /**
@@ -133,7 +136,7 @@ export function non_blocking_sync_after_io_sometimes() {
        * ? --> setImmediate always runs before setTimeout => we can't unblock EL
        *
        * ! >>> It's truth!
-       * ! >>> We need at least 2 setImmediate in order to unblock it
+       * ! >>> We need at least 2 setImmediate in order to have chance unblock it
        */
 
       ;(async () => {
@@ -148,13 +151,13 @@ export function non_blocking_sync_after_io_sometimes() {
           }
         }
 
-        return resolve('sync')
         console.log('Finished adding numbers', result)
+        return resolve('sync')
       })()
 
       setTimeout(() => {
-        return resolve('timeout')
         console.log('we are inside timeout phase - 0 ms')
+        return resolve('timeout')
       }, 0)
     })
   })
@@ -165,15 +168,16 @@ export function non_blocking_async() {
    * ? Here we have starvation IO usecase, because promise_queue add new promises
    * ? on current queue and EL can't move on to the next phase
    * -----
-   * ! Solution: forcefuly plan setImedidate on current promise and "scroll forward" EL
+   * ! Solution: forcefully plan setImmediate on current promise and "scroll forward" EL
    */
   ;(async () => {
     let result = 0
 
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 1_000_000; i++) {
       result += await Promise.resolve(i)
 
-      if (i > 0 && i % 3 === 0) {
+      if (i === 500_000) {
+        await new Promise((resolve) => setImmediate(resolve))
         await new Promise((resolve) => setImmediate(resolve))
       }
     }
@@ -188,9 +192,9 @@ export function non_blocking_async() {
 
 export function bcryptjs_proof_async() {
   /**
-   * ? Despite the fact that bcryptjs doesn't use threads for libuv threapool
+   * ? Despite the fact that bcryptjs doesn't use threads for libuv threadpool
    * ! (proof in: 4-libuv-threadpool/1-default-express-threadpool.ts)
-   * ? it's full asyncronous and doesn't block event loop
+   * ? it's full asynchronous and doesn't block event loop
    */
 
   ;(async () => {
@@ -213,7 +217,7 @@ export function bcryptjs_proof_sync() {
 
   ;(async () => {
     /**
-     * Intentially use async-await in order to proof that it doesn't affect to EL and
+     * Intentionally use async-await in order to proof that it doesn't affect to EL and
      * blocks it anyway
      */
     for (let i = 0; i < 100; i++) {

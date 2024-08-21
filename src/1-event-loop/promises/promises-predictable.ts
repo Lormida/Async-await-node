@@ -39,6 +39,7 @@ async function promiseFetchOrSleep1() {
   fetchOrSleep()
     .then(() => {
       console.log(1)
+
       fetchOrSleep().then(() => {
         console.log(2)
         fetchOrSleep().then(() => {

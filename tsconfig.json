@@ -11,7 +11,7 @@
     "outDir": "build",
 
     "sourceMap": false,
-    "declaration": true,
+    "declaration": false,
 
     "forceConsistentCasingInFileNames": true,
     "importHelpers": true,

@@ -70,7 +70,7 @@ export class AsyncDebugger {
   // Track async operations initiated by the passed in function in a new async context.
   //
   startTracking(label, userCode) {
-    this.lazyInit() // Lazy initialise.
+    this.lazyInit() // Lazy initialize.
 
     const executionContext = new async_hooks.AsyncResource(label)
     executionContext.runInAsyncScope(() => {

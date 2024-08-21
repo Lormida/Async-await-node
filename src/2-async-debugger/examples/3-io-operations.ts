@@ -3,7 +3,7 @@ import { AsyncDebugger } from '../lib/async-debugger'
 
 export function ioOperations() {
   const asyncDebugger = new AsyncDebugger()
-  const tempFile = new URL('../../../../temp/text.txt', import.meta.url)
+  const tempFile = new URL('../../../file.txt', import.meta.url)
 
   // TEST FUNCTIONS
   const testReadFile = () => {

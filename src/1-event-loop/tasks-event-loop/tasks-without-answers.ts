@@ -3,14 +3,20 @@ import path from 'path'
 import url from 'url'
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 
-const tempFile = path.join(__dirname, '../../../../temp/text.txt')
-
 const baz = () => console.log('baz')
 const foo = () => console.log('foo')
 const zoo = () => console.log('zoo')
-const testPromise = (value) => Promise.resolve(value)
-const logger = (a) => console.log(a)
+
+const testPromise = (value: string | number) =>
+  new Promise<string | number>((res) => {
+    console.log('new promise run')
+    res(value)
+  }).then(logger)
+
+const logger = (a: string | number) => console.log(a)
 const sleep = () => new Promise((resolve) => setTimeout(resolve, 1000))
+
+const tempFile = path.join(__dirname, '../../../file.txt')
 
 // Part 1 - sync + await
 async function sync_await1() {
@@ -34,40 +40,101 @@ async function sync_await2() {
   async function test() {
     logger('2')
 
-    await testPromise(3)
+    await testPromise(4)
 
-    logger('4')
+    logger('5')
   }
 
   logger('1')
-  await test()
-  logger('5')
+  test()
+  logger('3')
 }
 
 // Part 2 - nextTick and promise queues (microtasks)
-function microtask_event_loop_starvation() {
-  /**
-   * ? NextTick will be run recursevely (setTimeout and setImmediate will be achieved)
-   */
-
-  let count = 0
-  const cb = () => {
-    console.log(`Processing nextTick cb ${++count}`)
-    process.nextTick(cb)
+function attempt_unblock_event_loop() {
+  function syncHeavy() {
+    console.log('heavy sync operation start') // 2
+    for (let i = 0; i < 3000000000; i++) {
+      /* empty */
+    }
+    console.log('heavy sync operation end') // 3
   }
 
-  setImmediate(() => console.log('setImmediate is called')) // never
-  setTimeout(() => console.log('setTimeout executed'), 100) // never
+  setTimeout(() => {
+    console.log('start setTimeout') // 1
+    syncHeavy()
+  }, 0)
+
+  setTimeout(() => {
+    console.log('timeout 1') // 4
+  }, 10)
+}
+
+function nexttick_event_loop_starvation1() {
+  let count = 0
+
+  const cb = () => {
+    console.log(`Processing nextTick cb ${++count}`)
+    process.nextTick(cb) // 3
+  }
+
+  setImmediate(() => console.log('setImmediate is called'))
+  setTimeout(() => console.log('setTimeout executed'), 100)
 
   process.nextTick(cb)
 
   console.log('Start')
 }
 
+function nexttick_event_loop_starvation2() {
+  setTimeout(() => console.log('timeout 0'), 0)
+
+  process.nextTick(() => {
+    console.log('nextTick1')
+
+    process.nextTick(() => {
+      console.log('nextTick2')
+
+      process.nextTick(() => {
+        console.log('nextTick3')
+      })
+    })
+  })
+}
+
+function promise_event_loop_starvation() {
+  setTimeout(() => console.log('timeout 0'), 0)
+
+  Promise.resolve().then(() => {
+    console.log('promise1')
+
+    Promise.resolve().then(() => {
+      console.log('promise2')
+
+      Promise.resolve().then(() => {
+        console.log('promise3')
+      })
+    })
+  })
+}
+
+function attempt_immediate_event_loop_starvation() {
+  setTimeout(() => console.log('timeout 0'), 0)
+
+  setImmediate(() => {
+    console.log('immediate 1')
+
+    setImmediate(() => {
+      console.log('immediate 2')
+
+      setImmediate(() => {
+        console.log('immediate 3')
+      })
+    })
+  })
+}
+
 function microtasks_sync1() {
-  /**
-   * ? All callbacks in the nextTick queue are executed before all callbacks in promise queue.
-   */
   console.log('Start')
 
   process.nextTick(() => {
@@ -90,10 +157,6 @@ function microtasks_sync1() {
 }
 
 function microtasks_sync2() {
-  /**
-   * ? All user-written synchronous JavaScript code takes priority over
-   * ? async code that the runtime would like to eventually execute.
-   */
   console.log('1')
 
   process.nextTick(() => console.log('nextTick'))
@@ -194,14 +257,19 @@ async function microtasks_sync7() {
 
   await Promise.resolve().then(() => {
     process.nextTick(() => console.log('next tick 2'))
+
     Promise.resolve().then(() => {
       console.log('sync 2')
       Promise.resolve().then(() => console.log('promise 2'))
     })
+
     console.log('sync 1')
   })
+
   console.log('then data')
 }
+
+microtasks_sync7()
 
 function microtasks_sync8() {
   process.nextTick(() => console.log('nextTick1'))
@@ -211,15 +279,19 @@ function microtasks_sync8() {
   Promise.resolve()
     .then(() => {
       process.nextTick(() => console.log('nextTick 2'))
+
       Promise.resolve().then(() => {
         console.log('promise 2')
+
         Promise.resolve().then(() => {
           console.log('promise 3')
+
           Promise.resolve().then(() => {
             console.log('promise 4')
           })
         })
       })
+
       console.log('sync 1')
     })
     .then(() => {
@@ -237,18 +309,18 @@ function microtasks_sync9() {
 
   Promise.resolve()
     .then(() => {
-      console.log('sync1')
+      console.log('sync1') // 2
       process.nextTick(() => console.log('nextTick 2'))
 
       Promise.resolve().then(() => {
-        console.log('sync 2')
+        console.log('sync 2') // 3
 
         Promise.resolve().then(() => {
-          console.log('promise 3')
+          console.log('promise 3') // 5
 
           Promise.resolve().then(() => {
             process.nextTick(() => console.log('nextTick 3'))
-            console.log('promise 4')
+            console.log('promise 4') // 6
             process.nextTick(() => console.log('nextTick 5'))
             0
           })
@@ -256,7 +328,7 @@ function microtasks_sync9() {
       })
     })
     .then(() => {
-      console.log('sync 6')
+      console.log('sync 6') // 4
     })
 }
 
@@ -266,13 +338,15 @@ function microtasks_setImmediate_sync1() {
   setImmediate(baz)
 
   Promise.resolve().then(() => {
-    console.log('bar')
+    console.log('bar 2')
     process.nextTick(zoo)
   })
 
   new Promise<void>((resolve) => {
     resolve()
-  }).then(() => console.log('bar'))
+  }).then(() => {
+    console.log('bar')
+  })
 
   process.nextTick(foo)
 }
@@ -295,14 +369,9 @@ function microtasks_setImmediate_sync2() {
 
 // Part 3 - timer queue
 function microtasks_timeouts1() {
-  /**
-   * ? Callbacks in the Microtask Queues are executed before callbacks in the Timer Queue.
-   */
   setTimeout(() => console.log('this is setTimeout 1'), 0)
   setTimeout(() => console.log('this is setTimeout 2'), 0)
-  0
   setTimeout(() => console.log('this is setTimeout 3'), 0)
-  1
 
   process.nextTick(() => console.log('this is process.nextTick 1'))
   process.nextTick(() => {
@@ -320,18 +389,13 @@ function microtasks_timeouts1() {
 }
 
 function microtasks_timeouts2() {
-  /**
-   * ? Callbacks in microtask queues are executed in between the execution of callbacks in the timer queue
-   */
   setTimeout(() => console.log('this is setTimeout 1'), 0)
   setTimeout(() => {
     console.log('this is setTimeout 2')
-    0
     process.nextTick(() => console.log('this is inner nextTick inside setTimeout'))
   }, 0)
 
   setTimeout(() => console.log('this is setTimeout 3'), 0)
-  2
 
   process.nextTick(() => console.log('this is process.nextTick 1'))
   process.nextTick(() => {
@@ -623,8 +687,12 @@ function timeouts_io_immediate_close() {
 export {
   sync_await1,
   sync_await2,
+  attempt_unblock_event_loop,
   // ..
-  microtask_event_loop_starvation,
+  nexttick_event_loop_starvation1,
+  nexttick_event_loop_starvation2,
+  promise_event_loop_starvation,
+  attempt_immediate_event_loop_starvation,
   microtasks_sync1,
   microtasks_sync2,
   microtasks_sync3,

@@ -12,7 +12,7 @@ import bcrypt from 'bcrypt'
 import { createServer } from 'http'
 
 /**
- * ? By some uknown reason such configuration doesn't work (it doesn't affect to performance)
+ * ? By some unknown reason such configuration doesn't work (it doesn't affect to performance)
  * ? (even if i initialize UV_THREADPOOL_SIZE using .env file via dotenv.config())
  * ! The single way achieve setting UV_THREADPOOL_SIZE via using explicit option:
  * ! >>> UV_THREADPOOL_SIZE=12 node --experimental-specifier-resolution=node ./build/src/main.js

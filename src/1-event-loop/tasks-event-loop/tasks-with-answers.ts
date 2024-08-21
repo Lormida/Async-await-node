@@ -6,25 +6,33 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 const baz = () => console.log('baz')
 const foo = () => console.log('foo')
 const zoo = () => console.log('zoo')
-const testPromise = (value) => Promise.resolve(value)
-const logger = (a) => console.log(a)
+
+const testPromise = (value: string | number) =>
+  new Promise<string | number>((res) => {
+    console.log('X')
+    res(value)
+  }).then(logger)
+
+const logger = (a: string | number) => console.log(a)
 const sleep = () => new Promise((resolve) => setTimeout(resolve, 1000))
 
-const tempFile = path.join(__dirname, '../../../../temp/text.txt')
+const tempFile = path.join(__dirname, '../../../file.txt')
 
 // Part 1 - sync + await
 async function sync_await1() {
   async function test() {
-    logger('2') // 2
+    logger('2')
 
-    await testPromise(4) // 4
+    await testPromise(4)
 
-    logger('5') // 5
+    logger('5')
   }
 
-  logger('1') // 1
+  logger('1')
   test()
-  logger('3') // 3
+  logger('3')
+
+  // 1 2 X 3 4 5
 }
 
 async function sync_await2() {
@@ -32,47 +40,43 @@ async function sync_await2() {
    * Case 2 - the only difference is test() ---> await test()
    */
   async function test() {
-    logger('2') // 2
+    logger('2')
 
-    await testPromise(3) // 3
+    await testPromise(4)
 
-    logger('4') // 4
+    logger('5')
   }
 
-  logger('1') // 1
+  logger('1')
   await test()
-  logger('5') // 5
+  logger('3')
+
+  // 1 2 x 4 5 3
 }
 
 // Part 2 - nextTick and promise queues (microtasks)
 function attempt_unblock_event_loop() {
-  /**
-   * If we call heavy sync function "asynchronously"
-   * f.e in setTimeout/setImmediate/etc it won't unblock EL.
-   * EL stucks as well.
-   */
-
   function syncHeavy() {
-    console.log('heavy sync operation start')
+    console.log('heavy sync operation start') // 2
     for (let i = 0; i < 3000000000; i++) {
       /* empty */
     }
-    console.log('heavy sync operation end')
+    console.log('heavy sync operation end') // 3
   }
 
   setTimeout(() => {
-    console.log('start setImmediate')
+    console.log('start setTimeout') // 1
     syncHeavy()
   }, 0)
 
   setTimeout(() => {
-    console.log('timeout 1')
+    console.log('timeout 1') // 4
   }, 10)
 }
 
 function nexttick_event_loop_starvation1() {
   /**
-   * ? NextTick will be run recursevely (setTimeout and setImmediate will never be achieved)
+   * ? NextTick will be run recursively (setTimeout and setImmediate will never be achieved)
    */
 
   let count = 0
@@ -90,16 +94,16 @@ function nexttick_event_loop_starvation1() {
 }
 
 function nexttick_event_loop_starvation2() {
-  setTimeout(() => console.log('timeout 0'), 0)
+  setTimeout(() => console.log('timeout 0'), 0) // 4
 
   process.nextTick(() => {
-    console.log('nextTick1')
+    console.log('nextTick1') // 1
 
     process.nextTick(() => {
-      console.log('nextTick2')
+      console.log('nextTick2') // 2
 
       process.nextTick(() => {
-        console.log('nextTick3')
+        console.log('nextTick3') // 3
       })
     })
   })
@@ -109,36 +113,32 @@ function promise_event_loop_starvation() {
   /**
    * It works the same as with nextTick starvation
    */
-  setTimeout(() => console.log('timeout 0'), 0)
+  setTimeout(() => console.log('timeout 0'), 0) // 4
 
   Promise.resolve().then(() => {
-    console.log('promise1')
+    console.log('promise1') // 1
 
     Promise.resolve().then(() => {
-      console.log('promise2')
+      console.log('promise2') // 2
 
       Promise.resolve().then(() => {
-        console.log('promise3')
+        console.log('promise3') // 3
       })
     })
   })
 }
 
 function attempt_immediate_event_loop_starvation() {
-  /**
-   * setImmediate can't be caused of event loop starvation
-   * (unlike of microtasks)
-   */
-  setTimeout(() => console.log('timeout 0'), 0)
+  setTimeout(() => console.log('timeout 0'), 0) // 2
 
   setImmediate(() => {
-    console.log('immediate 1')
+    console.log('immediate 1') // 1
 
     setImmediate(() => {
-      console.log('immediate 2')
+      console.log('immediate 2') // 3
 
       setImmediate(() => {
-        console.log('immediate 3')
+        console.log('immediate 3') // 4
       })
     })
   })
@@ -147,23 +147,26 @@ function attempt_immediate_event_loop_starvation() {
 function microtasks_sync1() {
   /**
    * ? All callbacks in the nextTick queue are executed before all callbacks in promise queue.
+   * BUT! It works only for CJS modules,
+   * When we run app in ES modules, it's running in global async context
+   * => in microtasks queue => promises will be resolved earlier than the nextTicks
    */
   console.log('Start') // 1
 
   process.nextTick(() => {
-    console.log('nextTick 1') // 3
+    console.log('nextTick 1') // 3 || 5
   })
 
   process.nextTick(() => {
-    console.log('nextTick 2') // 4
+    console.log('nextTick 2') // 4 || 6
   })
 
   Promise.resolve().then(() => {
-    console.log('Promise 1') // 5
+    console.log('Promise 1') // 5 || 3
   })
 
   Promise.resolve().then(() => {
-    console.log('Promise 2') // 6
+    console.log('Promise 2') // 6 || 4
   })
 
   console.log('End') // 2
@@ -186,40 +189,39 @@ function microtasks_sync2() {
 }
 
 function microtasks_sync3() {
-  process.nextTick(() => console.log('nextTick')) // 1
+  /**
+   * It depends on we run code in CJS or in ES
+   */
+  process.nextTick(() => console.log('nextTick')) // 1 || 5
 
-  Promise.resolve().then(() => console.log(2)) // 2
+  Promise.resolve().then(() => console.log(2)) // 2 || 1
   Promise.resolve()
     .then(() => {
-      console.log(3) // 3
-      process.nextTick(() => console.log(4)) // 6
-      Promise.resolve().then(() => console.log(5)) // 4
+      console.log(3) // 3 || 2
+      process.nextTick(() => console.log(4)) // 6 || 6
+      Promise.resolve().then(() => console.log(5)) // 4 || 3
     })
     .then(() => {
-      console.log(6) // 5
+      console.log(6) // 5 || 4
     })
 }
 
 function microtasks_sync4() {
-  process.nextTick(() => console.log('this is process.nextTick 1')) // 1
+  process.nextTick(() => console.log('this is process.nextTick 1')) // 1 || 4
   process.nextTick(() => {
-    console.log('this is process.nextTick 2') // 2
+    console.log('this is process.nextTick 2') // 2 || 5
 
-    process.nextTick(
-      () => console.log('this is the inner next tick inside next tick') // 4
-    )
+    process.nextTick(() => console.log('this is the inner next tick inside next tick')) // 4 || 8
   })
 
-  process.nextTick(() => console.log('this is process.nextTick 3')) // 3
+  process.nextTick(() => console.log('this is process.nextTick 3')) // 3 || 6
 
-  Promise.resolve().then(() => console.log('this is Promise.resolve 1')) // 5
+  Promise.resolve().then(() => console.log('this is Promise.resolve 1')) // 5 || 1
   Promise.resolve().then(() => {
-    console.log('this is Promise.resolve 2') // 6
-    process.nextTick(
-      () => console.log('this is the inner next tick inside Promise then block') // 8
-    )
+    console.log('this is Promise.resolve 2') // 6 || 2
+    process.nextTick(() => console.log('this is the inner next tick inside Promise then block')) // 8 || 7
   })
-  Promise.resolve().then(() => console.log('this is Promise.resolve 3')) // 7
+  Promise.resolve().then(() => console.log('this is Promise.resolve 3')) // 7 || 3
 }
 
 function microtasks_sleep_sync5() {
@@ -230,7 +232,7 @@ function microtasks_sleep_sync5() {
         console.log('top') // 3
         sleep().then(() => {
           console.log('middle') // 4
-          sleep().then(() => console.log('bottom')) // 5
+          sleep().then(() => console.log('bottom')) //5
         })
       })
     })
@@ -273,73 +275,80 @@ function microtasks_sync6() {
 }
 
 async function microtasks_sync7() {
-  process.nextTick(() => console.log('next tick 1')) // 1
-  Promise.resolve().then(() => console.log('promise 1')) // 2
+  process.nextTick(() => console.log('next tick 1')) // 1 || 6
+  Promise.resolve().then(() => console.log('promise 1')) // 2 || 1
 
   await Promise.resolve().then(() => {
-    process.nextTick(() => console.log('next tick 2')) // 7
+    process.nextTick(() => console.log('next tick 2')) // 7 || 7
+
     Promise.resolve().then(() => {
-      console.log('sync 2') // 4
-      Promise.resolve().then(() => console.log('promise 2')) // 6
+      console.log('sync 2') // 4 || 3
+      Promise.resolve().then(() => console.log('promise 2')) // 6 || 5
     })
-    console.log('sync 1') // 3
+
+    console.log('sync 1') // 3 || 2
   })
-  console.log('then data') // 5
+
+  console.log('then data') // 5 || 4
 }
 
 function microtasks_sync8() {
-  process.nextTick(() => console.log('nextTick1')) // 1
+  process.nextTick(() => console.log('nextTick1')) // 1 || 7
 
-  Promise.resolve().then(() => console.log('promise 1')) // 2
+  Promise.resolve().then(() => console.log('promise 1')) // 2 || 1
 
   Promise.resolve()
     .then(() => {
-      process.nextTick(() => console.log('nextTick 2')) // 8
+      process.nextTick(() => console.log('nextTick 2')) // 8 || 8
+
       Promise.resolve().then(() => {
-        console.log('promise 2') // 4
+        console.log('promise 2') // 4 || 3
+
         Promise.resolve().then(() => {
-          console.log('promise 3') // 6
+          console.log('promise 3') // 6 || 5
+
           Promise.resolve().then(() => {
-            console.log('promise 4') // 7
+            console.log('promise 4') // 7 || 6
           })
         })
       })
-      console.log('sync 1') // 3
+
+      console.log('sync 1') // 3 || 2
     })
     .then(() => {
-      console.log('then data') // 5
+      console.log('then data') // 5 || 4
     })
 }
 
 function microtasks_sync9() {
-  setTimeout(() => console.log('timeout'), 0) // 11
-  setImmediate(() => console.log('immediate')) // 12
+  setTimeout(() => console.log('timeout'), 0) // 11 || 12
+  setImmediate(() => console.log('immediate')) // 12 || 1
 
-  process.nextTick(() => console.log('nextTick1')) // 1
+  process.nextTick(() => console.log('nextTick1')) // 1 || 7
 
-  Promise.resolve().then(() => console.log('promise 1')) // 2
+  Promise.resolve().then(() => console.log('promise 1')) // 2 || 1
 
   Promise.resolve()
     .then(() => {
-      console.log('sync1') // 3
-      process.nextTick(() => console.log('nextTick 2')) // 8
+      console.log('sync 1') // 3 || 2
+      process.nextTick(() => console.log('nextTick 2')) // 8 || 8
 
       Promise.resolve().then(() => {
-        console.log('sync 2') // 4
+        console.log('sync 2') // 4 || 3
 
         Promise.resolve().then(() => {
-          console.log('promise 3') // 6
+          console.log('promise 3') // 6 || 5
 
           Promise.resolve().then(() => {
-            process.nextTick(() => console.log('nextTick 3')) // 9
+            process.nextTick(() => console.log('nextTick 3')) // 9 || 9
             console.log('promise 4') // 7
-            process.nextTick(() => console.log('nextTick 5')) // 10
+            process.nextTick(() => console.log('nextTick 5')) // 10 || 10
           })
         })
       })
     })
     .then(() => {
-      console.log('sync 6') // 5
+      console.log('sync 6') // 5 || 4
     })
 }
 
@@ -349,15 +358,17 @@ function microtasks_setImmediate_sync1() {
   setImmediate(baz) // 6
 
   Promise.resolve().then(() => {
-    console.log('bar') // 3
+    console.log('bar 2') // 3 || 2
     process.nextTick(zoo) // 5
   })
 
   new Promise<void>((resolve) => {
     resolve()
-  }).then(() => console.log('bar')) // 4
+  }).then(() => {
+    console.log('bar') // 4 || 3
+  })
 
-  process.nextTick(foo) // 2
+  process.nextTick(foo) // 2 || 4
 }
 
 function microtasks_setImmediate_sync2() {
@@ -369,37 +380,34 @@ function microtasks_setImmediate_sync2() {
     console.log('pre-promise') // 2
     resolve('bar')
   }).then((value) => {
-    console.log(value) // 4
+    console.log(value) // 4 || 3
     process.nextTick(zoo) // 5
   })
 
-  process.nextTick(foo) // 3
+  process.nextTick(foo) // 3 || 4
 }
 
 // Part 3 - timer queue
 function microtasks_timeouts1() {
   /**
    * ? Callbacks in the Microtask Queues are executed before callbacks in the Timer Queue.
+   * For ES the order will be another
    */
-  setTimeout(() => console.log('this is setTimeout 1'), 0) // 9
-  setTimeout(() => console.log('this is setTimeout 2'), 0) // 10
-  setTimeout(() => console.log('this is setTimeout 3'), 0) // 11
+  setTimeout(() => console.log('this is setTimeout 1'), 0)
+  setTimeout(() => console.log('this is setTimeout 2'), 0)
+  setTimeout(() => console.log('this is setTimeout 3'), 0)
 
   process.nextTick(() => console.log('this is process.nextTick 1')) // 1
   process.nextTick(() => {
     console.log('this is process.nextTick 2') // 2
-    process.nextTick(
-      () => console.log('this is the inner next tick inside next tick') // 4
-    )
+    process.nextTick(() => console.log('this is the inner next tick inside next tick')) // 4
   })
   process.nextTick(() => console.log('this is process.nextTick 3')) // 3
 
   Promise.resolve().then(() => console.log('this is Promise.resolve 1')) // 5
   Promise.resolve().then(() => {
     console.log('this is Promise.resolve 2') // 6
-    process.nextTick(
-      () => console.log('this is the inner next tick inside Promise then block') // 8
-    )
+    process.nextTick(() => console.log('this is the inner next tick inside Promise then block')) // 8
   })
   Promise.resolve().then(() => console.log('this is Promise.resolve 3')) // 7
 }
@@ -411,9 +419,7 @@ function microtasks_timeouts2() {
   setTimeout(() => console.log('this is setTimeout 1'), 0) // 9
   setTimeout(() => {
     console.log('this is setTimeout 2') // 10
-    process.nextTick(
-      () => console.log('this is inner nextTick inside setTimeout') // 11
-    )
+    process.nextTick(() => console.log('this is inner nextTick inside setTimeout')) // 11
   }, 0)
 
   setTimeout(() => console.log('this is setTimeout 3'), 0) // 12
@@ -421,18 +427,14 @@ function microtasks_timeouts2() {
   process.nextTick(() => console.log('this is process.nextTick 1')) // 1
   process.nextTick(() => {
     console.log('this is process.nextTick 2') // 2
-    process.nextTick(
-      () => console.log('this is the inner next tick inside next tick') // 4
-    )
+    process.nextTick(() => console.log('this is the inner next tick inside next tick')) // 4
   })
   process.nextTick(() => console.log('this is process.nextTick 3')) // 3
 
-  Promise.resolve().then(() => console.log('this is Promise.resolve 1')) // 5;
+  Promise.resolve().then(() => console.log('this is Promise.resolve 1')) // 5
   Promise.resolve().then(() => {
     console.log('this is Promise.resolve 2') // 6
-    process.nextTick(
-      () => console.log('this is the inner next tick inside Promise then block') // 8
-    )
+    process.nextTick(() => console.log('this is the inner next tick inside Promise then block')) // 8
   })
   Promise.resolve().then(() => console.log('this is Promise.resolve 3')) // 7
 }

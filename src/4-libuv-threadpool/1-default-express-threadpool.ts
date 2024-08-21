@@ -36,7 +36,7 @@ export function defaultExpressThreadpool() {
      * ? 11 threads - 520
      * ? 12 threads - 520
      * ? 1000 threads - 495
-     * ! Conclusion: it speeds up with grow of threapool but non-linearly
+     * ! Conclusion: it speeds up with grow of threadpool but non-linearly
      * ! (after 8 logic cores ~~ doesn't affect to performance)
      */
     const hash = await bcrypt.hash('this is a long password', 8)
@@ -51,7 +51,7 @@ export function defaultExpressThreadpool() {
      * ? 11 threads - 51
      * ? 12 threads - 51
      * ? 1000 threads - 51
-     * ! Conclusion: bcrypts library it's async function, but doesn't use
+     * ! Conclusion: bcryptjs library it's async function, but doesn't use
      * ! libuv threadpools under the hood (unlike of bcrypt library)
      */
     // const hash = await bcryptjs.hash('this is a long password', 8)

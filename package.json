@@ -32,13 +32,16 @@
     "url": "git+https://github.com/Lormida/Asynchronous_travel_around_the_Node.js.git"
   },
   "scripts": {
-    "dev": "nodemon -e ts --watch src .env --exec \"tsc -p tsconfig.json --incremental && node --experimental-specifier-resolution=node --no-warnings ./build/src/main.js\"",
-    "dev:performance": "nodemon -e ts --watch src .env --exec \"tsc -p tsconfig.json --incremental && UV_THREADPOOL_SIZE=12 node --experimental-specifier-resolution=node --no-warnings ./build/src/main.js\"",
-    "start": "node --experimental-specifier-resolution=node --no-warnings ./build/src/main.js",
-    "start:performance": "UV_THREADPOOL_SIZE=12 node --experimental-specifier-resolution=node --no-warnings ./build/src/main.js",
-    "start:debug": "node --experimental-specifier-resolution=node --inspect-brk ./build/src/main.js",
+    "dev:old": "nodemon -e ts --watch src .env --exec \"tsc -p tsconfig.json --incremental && npm run start\"",
+    "dev": "tsx --watch ./src/main.ts",
+    "dev:performance": "nodemon -e ts --watch src .env --exec \"tsc -p tsconfig.json --incremental && UV_THREADPOOL_SIZE=12 node --loader=./loader.js ./build/src/main.js\"",
+    "start:before19": "node --experimental-specifier-resolution=node ./build/src/main.js",
+    "start": "tsx ./src/main.ts",
+    "start:old": "npm run build && node --loader=./loader.js ./build/src/main.js",
+    "start:performance": "npm run build && UV_THREADPOOL_SIZE=12 node --loader=./loader.js ./build/src/main.js",
+    "start:debug": "npm run build && node --loader=./loader.js --inspect-brk ./build/src/main.js",
     "ts:check": "tsc --noEmit",
-    "copyMySpecialFiles": "copyfiles --error --up 1 src/**/*.{jpg,mp4} build/src",
+    "copyMySpecialFiles": "copyfiles --error --up 1 src/**/*.{jpg,mp4} build/src && copyfiles --error ./file.txt build",
     "prebuild": "rm -rf build && npm run lint",
     "build": "tsc -p tsconfig.json",
     "build:watch": "tsc -w -p tsconfig.json",
@@ -67,6 +70,7 @@
     "rimraf": "~5.0",
     "ts-jest": "~29.1",
     "ts-node": "^10.9.1",
+    "tsx": "^4.17.0",
     "typescript": "~5.2"
   },
   "dependencies": {
@@ -81,6 +85,7 @@
     "mongoose": "^7.5.3",
     "morgan": "^1.10.0",
     "node-worker-threads-pool": "^1.5.1",
+    "resolve": "^1.22.8",
     "sharp": "^0.32.6",
     "tslib": "~2.6",
     "workerpool": "^6.5.0"

@@ -25,3 +25,4 @@ export function customFunctions() {
   // ASYNC TRACKER
   asyncDebugger.startTracking('Test', testCustomFetch)
 }
+customFunctions()
