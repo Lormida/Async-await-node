@@ -33,10 +33,10 @@
   },
   "scripts": {
     "dev:old": "nodemon -e ts --watch src .env --exec \"tsc -p tsconfig.json --incremental && npm run start\"",
-    "dev": "tsx --watch ./src/main.ts",
+    "dev": "npx tsx --watch ./src/main.ts",
     "dev:performance": "nodemon -e ts --watch src .env --exec \"tsc -p tsconfig.json --incremental && UV_THREADPOOL_SIZE=12 node --loader=./loader.js ./build/src/main.js\"",
     "start:before19": "node --experimental-specifier-resolution=node ./build/src/main.js",
-    "start": "tsx ./src/main.ts",
+    "start": "npx tsx ./src/main.ts",
     "start:old": "npm run build && node --loader=./loader.js ./build/src/main.js",
     "start:performance": "npm run build && UV_THREADPOOL_SIZE=12 node --loader=./loader.js ./build/src/main.js",
     "start:debug": "npm run build && node --loader=./loader.js --inspect-brk ./build/src/main.js",
@@ -55,8 +55,10 @@
   "devDependencies": {
     "@types/bcrypt": "^5.0.0",
     "@types/bcryptjs": "^2.4.4",
+    "@types/dotenv": "^8.2.0",
     "@types/jest": "~29.5",
     "@types/node": "~20",
+    "@types/workerpool": "^6.4.7",
     "@typescript-eslint/eslint-plugin": "~6.7.3",
     "@typescript-eslint/parser": "~6.7.3",
     "copyfiles": "^2.4.1",
@@ -74,7 +76,6 @@
     "typescript": "~5.2"
   },
   "dependencies": {
-    "@types/workerpool": "^6.4.4",
     "axios": "^1.5.1",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^2.4.3",

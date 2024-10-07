@@ -41,6 +41,7 @@ import {
   runConcurrentPromises,
   runParallelPromises,
 } from './1-event-loop/sequential-vs-concurrent-vs-parallel'
+import { promise7 } from './1-event-loop/promises/promises-unpredictable'
 
 // runConcurrent()
 // expressWorkerThread()
@@ -60,7 +61,8 @@ import {
 
 // runOwnImplWorkerpool()
 
-microtasks_setImmediate_sync2()
+// microtasks_setImmediate_sync2()
+promise7()
 // workerPoolRun()
 // workerpoolVsWorkerthreads({
 //   mode: 'worker-threads',

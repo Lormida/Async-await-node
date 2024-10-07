@@ -223,4 +223,36 @@ async function promise6() {
     .then((data) => console.log('data:', data))
 }
 
-export { promise1, promise2, promise3, promise4, promise5, promise6 }
+// ❌❌❌
+async function promise7() {
+  /**
+   * Works differently in 3 different Node.js versions.
+   * V8 article says that behavior like in 10 node is correct (https://v8.dev/blog/fast-async),
+   * but why then the rollbacked that, idk:
+   *
+   * In node < 10:
+   *  after await
+   *  tick a
+   *  tick b
+   *
+   * In node >= 10:
+   *  tick a
+   *  tick b
+   *  after await
+   *
+   * In node >= 12:
+   *  after await
+   *  tick a
+   *  tick b
+   */
+  const p = Promise.resolve()
+
+  ;(async () => {
+    await p
+    console.log('after:await')
+  })()
+
+  p.then(() => console.log('tick:a')).then(() => console.log('tick:b'))
+}
+
+export { promise1, promise2, promise3, promise4, promise5, promise6, promise7 }
